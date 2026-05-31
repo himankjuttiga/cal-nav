@@ -95,10 +95,9 @@ jobs:
       - name: Create GitHub Release
         run: |
           gh release create latest \
-            --title "cal-nav (latest build)" \
-            --notes "Automatic build from commit \`${{ steps.sha.outputs.short }}\`" \
-            --prerelease \
-            --tag latest \
-            dist/*
+              dist/* \
+              --title "cal-nav (latest build)" \
+              --notes "Automatic build from commit \`${{ steps.sha.outputs.short }}\`" \
+              --prerelease
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
