@@ -1,0 +1,32 @@
+name: build-installers
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            type: dmg
+          - os: windows-latest
+            type: msi
+          - os: ubuntu-latest
+            type: deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build runnable jar
+        run: mvn -B clean package
+      - name: Build native installer
+        run: jpackage --type ${{ matrix.type }} --name cal-nav --app-version 1.0.0 --input target --main-jar cal-nav.jar --main-class com.juttiga.calendar.Main --dest dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cal-nav-${{ matrix.os }}
+          path: dist/*

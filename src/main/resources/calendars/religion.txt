@@ -1,0 +1,27 @@
+# Major interfaith holidays 2026-2027
+# All-day entries: title|startDate|endDate (inclusive), dates as yyyy-MM-dd
+# Lunar/moon-sighting dates are approximate and may vary by a day.
+Ash Wednesday|2026-02-18|2026-02-18
+Ramadan Begins|2026-02-18|2026-02-18
+Purim|2026-03-02|2026-03-03
+Holi|2026-03-04|2026-03-04
+Eid al-Fitr|2026-03-20|2026-03-20
+Nowruz|2026-03-20|2026-03-21
+Palm Sunday|2026-03-29|2026-03-29
+Passover|2026-04-02|2026-04-09
+Good Friday|2026-04-03|2026-04-03
+Easter|2026-04-05|2026-04-05
+Orthodox Easter|2026-04-12|2026-04-12
+Vaisakhi|2026-04-14|2026-04-14
+Shavuot|2026-05-21|2026-05-23
+Eid al-Adha|2026-05-27|2026-05-27
+Vesak|2026-05-31|2026-05-31
+Rosh Hashanah|2026-09-12|2026-09-13
+Yom Kippur|2026-09-21|2026-09-21
+Sukkot|2026-09-26|2026-10-02
+Diwali|2026-11-08|2026-11-08
+Bodhi Day|2026-12-08|2026-12-08
+Hanukkah|2026-12-04|2026-12-12
+Christmas|2026-12-25|2026-12-25
+Orthodox Christmas|2027-01-07|2027-01-07
+Easter (2027)|2027-03-28|2027-03-28

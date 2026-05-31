@@ -1,0 +1,25 @@
+# Miami University (Oxford, OH) 2026-2027 academic calendar
+# All-day entries: title|startDate|endDate (inclusive), dates as yyyy-MM-dd
+# Source: miamioh.edu official 2026-2027 academic calendar
+Fall Classes Begin|2026-08-24|2026-08-24
+Labor Day (no classes)|2026-09-07|2026-09-07
+Fall Break|2026-10-09|2026-10-11
+Thanksgiving Break|2026-11-25|2026-11-29
+Fall Classes Resume|2026-11-30|2026-11-30
+Fall Classes End|2026-12-04|2026-12-04
+Fall Final Exams|2026-12-07|2026-12-11
+Fall Commencement|2026-12-11|2026-12-11
+Winter Term Begins|2027-01-02|2027-01-02
+MLK Day (no classes)|2027-01-18|2027-01-18
+Winter Term Ends|2027-01-22|2027-01-22
+Spring Classes Begin|2027-01-25|2027-01-25
+Spring Break|2027-03-22|2027-03-28
+Spring Classes Resume|2027-03-29|2027-03-29
+Spring Classes End|2027-05-07|2027-05-07
+Spring Final Exams|2027-05-10|2027-05-14
+Spring Commencement|2027-05-15|2027-05-15
+Summer Term Begins|2027-05-17|2027-05-17
+Memorial Day (no classes)|2027-05-31|2027-05-31
+Juneteenth (observed)|2027-06-18|2027-06-18
+Independence Day (observed)|2027-07-05|2027-07-05
+Summer Classes End|2027-08-06|2027-08-06

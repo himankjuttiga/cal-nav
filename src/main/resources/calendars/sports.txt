@@ -1,0 +1,12 @@
+# Sports calendar (SAMPLE)
+# Timed entries: title|startISO|endISO  (yyyy-MM-ddTHH:mm:ss)
+# These are sample / marquee placeholders with approximate times.
+# Replace with your team's real schedule (many teams publish an .ics feed).
+Super Bowl LX|2026-02-08T18:30:00|2026-02-08T22:00:00
+NBA All-Star Game|2026-02-15T20:00:00|2026-02-15T22:30:00
+Cavaliers vs Celtics (sample)|2026-03-18T19:00:00|2026-03-18T21:30:00
+Guardians Home Opener (sample)|2026-04-09T16:10:00|2026-04-09T19:00:00
+The Masters - Final Round|2026-04-12T14:00:00|2026-04-12T19:00:00
+Kentucky Derby|2026-05-02T18:57:00|2026-05-02T19:30:00
+Indianapolis 500|2026-05-24T12:45:00|2026-05-24T16:00:00
+FIFA World Cup Final|2026-07-19T15:00:00|2026-07-19T17:00:00
