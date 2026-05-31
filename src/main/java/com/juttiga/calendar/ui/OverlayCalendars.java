@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +21,7 @@ import java.util.Map;
  */
 class OverlayCalendars {
 
-    private final Map<Category, List<Event>> byCategory = new EnumMap<>(Category.class);
+    private final Map<Category, List<Event>> byCategory = new HashMap<>();
 
     OverlayCalendars() {
         load(Category.RELIGION, "religion.txt");
@@ -72,10 +72,11 @@ class OverlayCalendars {
     private void parseAllDay(String line, List<Event> out) {
         String[] parts = line.split("\\|");
         if (parts.length != 3) throw new IllegalArgumentException("Expected title|startDate|endDate");
-        String title    = parts[0];
+        String    title = parts[0];
         LocalDate start = LocalDate.parse(parts[1]);
         LocalDate end   = LocalDate.parse(parts[2]);
         for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1))
-            out.add(new Event(title, d.atStartOfDay(), d.atTime(23, 59)));
+            out.add(new Event(title, d.atStartOfDay(), d.atTime(23, 59),
+                    null, null, null, true, null, null));
     }
 }

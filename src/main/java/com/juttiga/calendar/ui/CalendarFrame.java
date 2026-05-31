@@ -12,33 +12,32 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 /**
- * Main window. A toolbar provides navigation and a Day/Week/Month switch; a
- * second row of checkboxes toggles the calendar layers. Personal events are
- * editable and never blocked by overlay events; the overlay layers (Sports,
- * Religion, Miami University) are read-only and hidden until their box is ticked.
+ * Main window. Toolbar provides navigation and Day/Week/Month switch; filter
+ * bar toggles calendar layers and includes the overlap-allow toggle.
+ * Personal events are editable; overlay layers are read-only.
  */
 public class CalendarFrame extends JFrame implements CalendarActions, CalendarData {
 
     private enum ViewMode { DAY, WEEK, MONTH }
 
     private static final DateTimeFormatter MONTH_YEAR = DateTimeFormatter.ofPattern("MMMM yyyy");
-    private static final DateTimeFormatter FULL_DAY = DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy");
-    private static final DateTimeFormatter MON = DateTimeFormatter.ofPattern("MMM");
-    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
-    private static final DateTimeFormatter LONG_DATE = DateTimeFormatter.ofPattern("EEE, MMM d, yyyy");
+    private static final DateTimeFormatter FULL_DAY   = DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy");
+    private static final DateTimeFormatter MON        = DateTimeFormatter.ofPattern("MMM");
+    private static final DateTimeFormatter TIME        = DateTimeFormatter.ofPattern("h:mm a", Locale.US);
+    private static final DateTimeFormatter LONG_DATE   = DateTimeFormatter.ofPattern("EEE, MMM d, yyyy");
 
     private static final Color ACCENT = CalendarTheme.ACCENT;
 
     private final CalendarService service;
     private final FileStorage storage;
     private final OverlayCalendars overlays = new OverlayCalendars();
-    private final Set<Category> visible = EnumSet.of(Category.PERSONAL);
+    private final Set<Category> visible = new HashSet<>();
 
     private ViewMode mode = ViewMode.WEEK;
     private LocalDate current = LocalDate.now();
@@ -48,24 +47,33 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
     private WeekView weekView;
     private MonthView monthView;
 
-    private final JToggleButton dayBtn = new JToggleButton("Day");
-    private final JToggleButton weekBtn = new JToggleButton("Week");
+    private final JToggleButton dayBtn   = new JToggleButton("Day");
+    private final JToggleButton weekBtn  = new JToggleButton("Week");
     private final JToggleButton monthBtn = new JToggleButton("Month");
+
+    // Overlap toggle
+    private final JToggleButton overlapBtn = new JToggleButton("Allow Overlaps");
+
+    // Filter bar panel — rebuilt when user creates new categories
+    private JPanel filterBar;
+    private final JPanel northWrapper = new JPanel(new BorderLayout());
 
     public CalendarFrame(CalendarService service, FileStorage storage) {
         super("cal-nav");
         this.service = service;
         this.storage = storage;
 
+        visible.add(Category.PERSONAL);
+
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout());
         getContentPane().setBackground(CalendarTheme.SURFACE);
 
-        JPanel north = new JPanel(new BorderLayout());
-        north.setBackground(CalendarTheme.TOOLBAR);
-        north.add(buildToolbar(), BorderLayout.NORTH);
-        north.add(buildFilterBar(), BorderLayout.SOUTH);
-        add(north, BorderLayout.NORTH);
+        northWrapper.setBackground(CalendarTheme.TOOLBAR);
+        northWrapper.add(buildToolbar(), BorderLayout.NORTH);
+        filterBar = buildFilterBar();
+        northWrapper.add(filterBar, BorderLayout.SOUTH);
+        add(northWrapper, BorderLayout.NORTH);
 
         canvas.setBackground(CalendarTheme.SURFACE);
         canvas.setBorder(new EmptyBorder(0, 8, 8, 8));
@@ -75,6 +83,10 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
         setMinimumSize(new Dimension(1040, 740));
         setLocationRelativeTo(null);
     }
+
+    // ----------------------------------------------------------------
+    // Toolbar
+    // ----------------------------------------------------------------
 
     private JComponent buildToolbar() {
         JPanel bar = new JPanel(new BorderLayout());
@@ -92,10 +104,10 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
 
         JButton today = new JButton("Today");
         today.addActionListener(e -> { current = LocalDate.now(); updateView(); });
-        JButton prev = new JButton("<");
+        JButton prev  = new JButton("<");
         prev.addActionListener(e -> { current = step(-1); updateView(); });
-        JButton next = new JButton(">");
-        next.addActionListener(e -> { current = step(1); updateView(); });
+        JButton next  = new JButton(">");
+        next.addActionListener(e -> { current = step(1);  updateView(); });
 
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 18f));
         titleLabel.setForeground(CalendarTheme.TEXT_PRIMARY);
@@ -110,9 +122,16 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
             group.add(b); b.setFocusPainted(false); right.add(b);
         }
         weekBtn.setSelected(true);
-        dayBtn.addActionListener(e -> { mode = ViewMode.DAY; updateView(); });
-        weekBtn.addActionListener(e -> { mode = ViewMode.WEEK; updateView(); });
+        dayBtn.addActionListener(e ->   { mode = ViewMode.DAY;   updateView(); });
+        weekBtn.addActionListener(e ->  { mode = ViewMode.WEEK;  updateView(); });
         monthBtn.addActionListener(e -> { mode = ViewMode.MONTH; updateView(); });
+
+        // Manage categories button
+        JButton manageBtn = new JButton("Manage Categories");
+        manageBtn.setFocusPainted(false);
+        manageBtn.addActionListener(e -> openCategoryManager());
+
+        right.add(manageBtn);
         right.setBorder(new EmptyBorder(0, 0, 0, 12));
 
         bar.add(left, BorderLayout.WEST);
@@ -120,19 +139,23 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
         return bar;
     }
 
-    private JComponent buildFilterBar() {
+    // ----------------------------------------------------------------
+    // Filter bar (rebuilt when categories change)
+    // ----------------------------------------------------------------
+
+    private JPanel buildFilterBar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 6));
         bar.setOpaque(false);
         bar.setBorder(new MatteBorder(1, 0, 1, 0, CalendarTheme.GRID_LINE_STRONG));
 
-        JLabel label = new JLabel("Show:");
-        label.setForeground(CalendarTheme.TEXT_MUTED);
-        bar.add(label);
+        JLabel showLabel = new JLabel("Show:");
+        showLabel.setForeground(CalendarTheme.TEXT_MUTED);
+        bar.add(showLabel);
 
-        for (Category c : Category.values()) {
-            JCheckBox box = new JCheckBox(c.label, visible.contains(c));
+        for (Category c : Category.all()) {
+            JCheckBox box = new JCheckBox(c.getLabel(), visible.contains(c));
             box.setOpaque(false);
-            box.setForeground(c.swatch.darker());
+            box.setForeground(c.getSwatch().darker());
             box.setFont(box.getFont().deriveFont(Font.BOLD));
             box.addActionListener(e -> {
                 if (box.isSelected()) visible.add(c); else visible.remove(c);
@@ -140,36 +163,157 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
             });
             bar.add(box);
         }
+
+        // Separator
+        bar.add(Box.createHorizontalStrut(18));
+
+        // Overlap toggle
+        overlapBtn.setSelected(service.isAllowOverlaps());
+        overlapBtn.setFocusPainted(false);
+        overlapBtn.setFont(overlapBtn.getFont().deriveFont(Font.BOLD));
+        overlapBtn.setForeground(overlapBtn.isSelected() ? new Color(0x0B8043) : CalendarTheme.TEXT_MUTED);
+        overlapBtn.addActionListener(e -> {
+            service.setAllowOverlaps(overlapBtn.isSelected());
+            overlapBtn.setForeground(overlapBtn.isSelected() ? new Color(0x0B8043) : CalendarTheme.TEXT_MUTED);
+        });
+        bar.add(overlapBtn);
+
         return bar;
     }
 
-    // ============================================================
-    // CalendarData: combine personal + enabled overlays
-    // ============================================================
+    private void rebuildFilterBar() {
+        northWrapper.remove(filterBar);
+        filterBar = buildFilterBar();
+        northWrapper.add(filterBar, BorderLayout.SOUTH);
+        northWrapper.revalidate();
+        northWrapper.repaint();
+    }
+
+    // ----------------------------------------------------------------
+    // Category manager dialog
+    // ----------------------------------------------------------------
+
+    private void openCategoryManager() {
+        JDialog dlg = new JDialog(this, "Manage Categories", true);
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(new EmptyBorder(12, 12, 12, 12));
+
+        DefaultListModel<Category> model = new DefaultListModel<>();
+        for (Category c : Category.all()) model.addElement(c);
+        JList<Category> list = new JList<>(model);
+        list.setCellRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(
+                    JList<?> l, Object v, int idx, boolean sel, boolean foc) {
+                super.getListCellRendererComponent(l, v, idx, sel, foc);
+                if (v instanceof Category c) {
+                    setText(c.getLabel() + (c.isBuiltin() ? " (built-in)" : ""));
+                    setForeground(c.getSwatch());
+                }
+                return this;
+            }
+        });
+        panel.add(new JScrollPane(list), BorderLayout.CENTER);
+
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+
+        JButton addBtn = new JButton("Add Category");
+        addBtn.addActionListener(e -> {
+            JTextField nameF = new JTextField(14);
+            Color[] col = {new Color(0x1A73E8)};
+            JButton cp = new JButton("Color");
+            cp.setBackground(col[0]);
+            cp.addActionListener(ev -> {
+                Color c = JColorChooser.showDialog(dlg, "Pick Color", col[0]);
+                if (c != null) { col[0] = c; cp.setBackground(c); }
+            });
+            JPanel p = new JPanel();
+            p.add(new JLabel("Name:")); p.add(nameF); p.add(cp);
+            int r = JOptionPane.showConfirmDialog(dlg, p, "New Category",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            if (r == JOptionPane.OK_OPTION && !nameF.getText().trim().isEmpty()) {
+                Category nc = Category.createUserCategory(nameF.getText().trim(), col[0]);
+                model.addElement(nc);
+                visible.add(nc);
+                rebuildFilterBar();
+                refreshData();
+            }
+        });
+
+        JButton editColorBtn = new JButton("Change Color");
+        editColorBtn.addActionListener(e -> {
+            Category sel = list.getSelectedValue();
+            if (sel == null) return;
+            Color c = JColorChooser.showDialog(dlg, "Category Color", sel.getSwatch());
+            if (c != null) {
+                sel.setSwatch(c);
+                list.repaint();
+                rebuildFilterBar();
+                refreshData();
+            }
+        });
+
+        JButton removeBtn = new JButton("Remove");
+        removeBtn.addActionListener(e -> {
+            Category sel = list.getSelectedValue();
+            if (sel == null) return;
+            if (sel.isBuiltin()) {
+                JOptionPane.showMessageDialog(dlg, "Built-in categories cannot be removed.");
+                return;
+            }
+            if (Category.removeUserCategory(sel)) {
+                model.removeElement(sel);
+                visible.remove(sel);
+                rebuildFilterBar();
+                refreshData();
+            }
+        });
+
+        btnRow.add(addBtn); btnRow.add(editColorBtn); btnRow.add(removeBtn);
+        panel.add(btnRow, BorderLayout.SOUTH);
+
+        dlg.setContentPane(panel);
+        dlg.pack();
+        dlg.setMinimumSize(new Dimension(320, 260));
+        dlg.setLocationRelativeTo(this);
+        dlg.setVisible(true);
+    }
+
+    // ----------------------------------------------------------------
+    // CalendarData
+    // ----------------------------------------------------------------
+
     @Override
     public List<CalItem> itemsFor(LocalDate date) {
         List<CalItem> out = new ArrayList<>();
         if (visible.contains(Category.PERSONAL)) {
             for (Event e : service.getEventsForDay(date)) {
-                out.add(new CalItem(e, Category.PERSONAL));
+                // Determine effective category for this event
+                Category cat = Category.PERSONAL;
+                if (e.getCategoryLabel() != null) {
+                    Category found = Category.byLabel(e.getCategoryLabel());
+                    if (found != null) cat = found;
+                }
+                out.add(new CalItem(e, cat));
             }
         }
-        for (Category c : new Category[]{Category.RELIGION, Category.MIAMI}) {
-            if (visible.contains(c)) {
+        for (Category c : Category.all()) {
+            if (c == Category.PERSONAL || !visible.contains(c)) continue;
+            if (!c.editable) { // overlay-style read-only
                 for (Event e : overlays.eventsFor(c, date)) out.add(new CalItem(e, c));
             }
         }
         return out;
     }
 
-    // ============================================================
+    // ----------------------------------------------------------------
     // CalendarActions
-    // ============================================================
+    // ----------------------------------------------------------------
+
     @Override
     public void createEventAt(LocalDateTime start) {
         EventDialog dialog = new EventDialog(this, service, null, start);
         dialog.setVisible(true);
-        if (dialog.wasChanged()) afterChange();
+        if (dialog.wasChanged()) { afterChange(); rebuildFilterBar(); }
     }
 
     @Override
@@ -177,7 +321,7 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
         if (item.editable()) {
             EventDialog dialog = new EventDialog(this, service, item.event, null);
             dialog.setVisible(true);
-            if (dialog.wasChanged()) afterChange();
+            if (dialog.wasChanged()) { afterChange(); rebuildFilterBar(); }
         } else {
             showInfo(item);
         }
@@ -193,13 +337,14 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
                 + when
                 + (e.getLocation() != null ? "\nLocation: " + e.getLocation() : "")
                 + (e.getDescription() != null ? "\n\n" + e.getDescription() : "")
-                + "\n\nCalendar: " + item.category.label + "  (read-only)";
-        JOptionPane.showMessageDialog(this, msg, item.category.label, JOptionPane.INFORMATION_MESSAGE);
+                + "\n\nCalendar: " + item.category.getLabel() + "  (read-only)";
+        JOptionPane.showMessageDialog(this, msg, item.category.getLabel(), JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // ============================================================
+    // ----------------------------------------------------------------
     // View management
-    // ============================================================
+    // ----------------------------------------------------------------
+
     private List<LocalDate> weekDays() {
         LocalDate weekStart = current.minusDays(current.getDayOfWeek().getValue() % 7);
         List<LocalDate> days = new ArrayList<>();
@@ -236,7 +381,7 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
     }
 
     private void refreshData() {
-        if (weekView != null) weekView.refresh();
+        if (weekView  != null) weekView.refresh();
         if (monthView != null) monthView.refresh();
         canvas.repaint();
     }
@@ -244,14 +389,14 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
     private String weekTitle(List<LocalDate> days) {
         LocalDate a = days.get(0), b = days.get(days.size() - 1);
         if (a.getMonth() == b.getMonth()) return a.format(MONTH_YEAR);
-        if (a.getYear() == b.getYear()) return a.format(MON) + " - " + b.format(MON) + " " + b.getYear();
+        if (a.getYear()  == b.getYear())  return a.format(MON) + " - " + b.format(MON) + " " + b.getYear();
         return a.format(MON) + " " + a.getYear() + " - " + b.format(MON) + " " + b.getYear();
     }
 
     private LocalDate step(int dir) {
         return switch (mode) {
-            case DAY -> current.plusDays(dir);
-            case WEEK -> current.plusWeeks(dir);
+            case DAY   -> current.plusDays(dir);
+            case WEEK  -> current.plusWeeks(dir);
             case MONTH -> current.plusMonths(dir);
         };
     }

@@ -18,26 +18,39 @@ public class CalendarService {
     private static final LocalTime DAY_START = LocalTime.of(8, 0);
     private static final LocalTime DAY_END   = LocalTime.of(17, 0);
 
-    // Keyed by start time; duplicate starts are illegal (same slot = overlap).
     private final TreeMap<LocalDateTime, Event> events = new TreeMap<>();
+
+    /** When true, overlapping timed events are allowed. */
+    private boolean allowOverlaps = false;
+
+    public boolean isAllowOverlaps()           { return allowOverlaps; }
+    public void    setAllowOverlaps(boolean v) { allowOverlaps = v; }
 
     // ----------------------------------------------------------------
     // Single event CRUD
     // ----------------------------------------------------------------
 
     public void addEvent(Event event) {
-        for (Event existing : events.values()) {
-            if (event.overlapsWith(existing))
-                throw new IllegalStateException("Event overlaps with: " + existing);
+        if (!allowOverlaps) {
+            for (Event existing : events.values()) {
+                if (event.overlapsWith(existing))
+                    throw new IllegalStateException("Event overlaps with: " + existing);
+            }
         }
-        events.put(event.getStart(), event);
+        // Allow multiple all-day events on the same day; use a unique key
+        LocalDateTime key = event.getStart();
+        while (events.containsKey(key)) key = key.plusSeconds(1);
+        events.put(key, event);
     }
 
     public void removeEvent(Event event) {
-        Event existing = events.get(event.getStart());
-        if (existing == null || !existing.equals(event))
-            throw new IllegalStateException("Event not found: " + event);
-        events.remove(event.getStart());
+        // Search by value since key may have been shifted
+        LocalDateTime key = null;
+        for (var entry : events.entrySet()) {
+            if (entry.getValue().equals(event)) { key = entry.getKey(); break; }
+        }
+        if (key == null) throw new IllegalStateException("Event not found: " + event);
+        events.remove(key);
     }
 
     public void updateEvent(Event oldEvent, Event newEvent) {
@@ -54,24 +67,6 @@ public class CalendarService {
     // Recurring events
     // ----------------------------------------------------------------
 
-    /**
-     * Creates one event instance per occurrence of the given days-of-week
-     * from startDate through repeatUntil (inclusive). All instances share the
-     * same seriesId so they can be deleted as a group.
-     *
-     * Instances that would overlap an existing event are skipped with a
-     * warning rather than aborting the whole series.
-     *
-     * @param title        event title
-     * @param startTime    time-of-day the event begins
-     * @param endTime      time-of-day the event ends
-     * @param description  optional notes
-     * @param location     optional location
-     * @param startDate    first possible date
-     * @param repeatUntil  last possible date (inclusive)
-     * @param repeatDays   which days of the week to repeat on
-     * @return number of instances actually added
-     */
     public int addRecurringEvents(String title,
                                    LocalTime startTime,
                                    LocalTime endTime,
@@ -92,7 +87,6 @@ public class CalendarService {
             if (!repeatDays.contains(d.getDayOfWeek())) continue;
             LocalDateTime s = d.atTime(startTime);
             LocalDateTime e = d.atTime(endTime);
-            // If end is before or equal to start (e.g. cross-midnight), push end to next day
             if (!e.isAfter(s)) e = e.plusDays(1);
             Event instance = new Event(title, s, e, description, location, seriesId);
             try {
@@ -105,17 +99,12 @@ public class CalendarService {
         return added;
     }
 
-    /**
-     * Removes every event that shares the given seriesId.
-     * @return number of instances removed
-     */
     public int removeSeries(String seriesId) {
         if (seriesId == null) return 0;
         List<Event> toRemove = new ArrayList<>();
-        for (Event e : events.values()) {
+        for (Event e : events.values())
             if (seriesId.equals(e.getSeriesId())) toRemove.add(e);
-        }
-        for (Event e : toRemove) events.remove(e.getStart());
+        for (Event e : toRemove) removeEvent(e);
         return toRemove.size();
     }
 
@@ -158,13 +147,15 @@ public class CalendarService {
         return null;
     }
 
-    public List<Event> getAllEvents() {
-        return new ArrayList<>(events.values());
-    }
+    public List<Event> getAllEvents() { return new ArrayList<>(events.values()); }
 
     public void loadEvents(List<Event> loaded) {
         events.clear();
-        for (Event e : loaded) events.put(e.getStart(), e);
+        for (Event e : loaded) {
+            LocalDateTime key = e.getStart();
+            while (events.containsKey(key)) key = key.plusSeconds(1);
+            events.put(key, e);
+        }
     }
 
     public int size() { return events.size(); }
