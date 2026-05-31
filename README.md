@@ -1,69 +1,62 @@
 # cal-nav
 
-A Java Swing calendar with Google / Outlook style Day, Week, and Month views.
+A personal calendar with Google / Outlook style Day, Week, and Month views.
 Click an empty area to create an event, click an event to edit or delete it.
-Times are shown and entered in AM/PM. Overlaps between your own events are
-prevented; every change is saved automatically.
+Times are shown and entered in AM/PM. Overlaps are prevented and every change
+is saved automatically to `~/.cal-nav/events.json`.
 
-## Calendar layers (filters)
+## Download
 
-Four toggleable layers, controlled by the checkboxes under the toolbar:
+> No Java installation required — just download and run.
 
-- My Calendar  - your own editable events (blue, varied per event)
-- Sports       - sample/marquee sporting events (green, read-only)
-- Religion     - major interfaith holidays 2026-2027 (purple, read-only)
-- Miami University - official 2026-2027 academic calendar (red, read-only)
+| Platform | Download |
+|----------|----------|
+| macOS    | [cal-nav.dmg](https://github.com/himankjuttiga/cal-nav/releases/download/latest/cal-nav.dmg) |
+| Windows  | [cal-nav-1.0.0.msi](https://github.com/himankjuttiga/cal-nav/releases/download/latest/cal-nav-1.0.0.msi) |
+| Linux    | [cal-nav_1.0.0_amd64.deb](https://github.com/himankjuttiga/cal-nav/releases/download/latest/cal-nav_1.0.0_amd64.deb) |
 
-Only My Calendar shows by default, so the overlays never clutter or block your
-schedule. Tick a box to overlay that layer; tick several to see them together.
-All-day items (holidays, academic dates) appear in a banner under the day
-headers in Day/Week view and as chips in Month view. Overlay items are
-read-only: clicking one shows its details rather than an edit dialog.
+These links always point to the latest build. A new build is published
+automatically every time the `main` branch is updated.
 
-The overlay data lives in `src/main/resources/calendars/` (sports.txt,
-religion.txt, miami.txt) and is bundled into the app. Sports entries are
-sample/approximate placeholders; replace them with your team's real schedule.
-Miami and religious dates are real, though lunar holiday dates can vary by a day.
+## Features
+
+- Day, Week, and Month views
+- Create, edit, and delete personal events
+- **Weekly recurrence** — when creating an event, tick "Repeat weekly",
+  choose which days of the week, and set an end date. All instances are
+  saved automatically. Editing a recurring event shows a "Delete series"
+  button to remove every instance at once.
+- Calendar overlays — Religion and Miami University academic calendar
+  (read-only, toggle with the checkboxes under the toolbar)
+- All-day items appear in a banner in Day/Week view and as chips in Month view
+- Events are stored in `~/.cal-nav/events.json` and survive restarts
 
 ## Run from source
 
-Requires JDK 17+ and Maven. From this folder:
+Requires JDK 17+ and Maven:
 
     mvn clean package
     mvn exec:java
 
-Or run com.juttiga.calendar.Main from IntelliJ after the Maven import.
+Or open in IntelliJ and run `com.juttiga.calendar.Main`.
 
-## Give it to other people
-
-`mvn clean package` produces a single runnable `target/cal-nav.jar`
-(run with `java -jar cal-nav.jar`). For native installers that need no Java,
-see DISTRIBUTING.md and the scripts in packaging/.
-
-## Data
-
-Your personal events are stored per user at `~/.cal-nav/events.txt`. New users
-start empty. A sample personal data set lives in data/events.txt; load it in
-development with `mvn exec:java -Dexec.args="data/events.txt"`.
-
-## Layout
+## Project layout
 
     src/main/java/com/juttiga/calendar/
-      Main.java                 entry point (FlatLaf light theme)
-      model/Event.java          event domain object + overlap rule
-      model/TimeSlot.java       free-slot value object
-      service/CalendarService.java  add / remove / update / queries
-      storage/FileStorage.java  plain-text persistence
-      ui/CalendarFrame.java     window: toolbar, filters, data provider
-      ui/WeekView.java          time grid + all-day banner (Day + Week)
-      ui/MonthView.java         month grid with event chips
-      ui/EventDialog.java       create / edit / delete popup (AM/PM)
-      ui/Category.java          the four calendar layers
-      ui/CalItem.java           event + its layer
-      ui/OverlayCalendars.java  loads the read-only layers from resources
-      ui/CalendarData.java      per-day item provider interface
-      ui/CalendarActions.java   view-to-frame callback interface
-      ui/CalendarTheme.java     colors + per-event color assignment
-    src/main/resources/calendars/  sports.txt, religion.txt, miami.txt
-    packaging/                  jpackage build scripts per OS
-    data/events.txt             sample personal events
+      Main.java                     entry point (FlatLaf light theme)
+      model/Event.java              event domain object + seriesId for recurrence
+      model/TimeSlot.java           free-slot value object
+      service/CalendarService.java  add / remove / update / recurring queries
+      storage/FileStorage.java      JSON persistence
+      ui/CalendarFrame.java         window: toolbar, filters, data provider
+      ui/WeekView.java              time grid + all-day banner (Day + Week)
+      ui/MonthView.java             month grid with event chips
+      ui/EventDialog.java           create / edit / delete / recurrence dialog
+      ui/Category.java              calendar layers
+      ui/CalItem.java               event + its layer
+      ui/OverlayCalendars.java      loads read-only overlays from resources
+      ui/CalendarTheme.java         colors + per-event color assignment
+    src/main/resources/calendars/   religion.txt, miami.txt
+    .github/workflows/build.yml     auto-build and release on push to main
+    packaging/                      jpackage scripts per OS
+    data/events.json                sample personal events (dev only)

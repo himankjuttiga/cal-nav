@@ -3,11 +3,12 @@ package com.juttiga.calendar.model;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
- * Represents a calendar event with a title, start time, and end time.
- * Two events are considered overlapping when their time ranges intersect.
- * Touching boundaries are permitted (one event may end exactly when another begins).
+ * Represents a calendar event. Recurring events share a seriesId so every
+ * instance of a series can be found and deleted together. One-off events have
+ * a null seriesId.
  */
 public class Event {
 
@@ -16,75 +17,69 @@ public class Event {
     private final String title;
     private final LocalDateTime start;
     private final LocalDateTime end;
+    private final String description;
+    private final String location;
+    private final String seriesId; // null for one-off events
 
     public Event(String title, LocalDateTime start, LocalDateTime end) {
-        if (title == null || title.isEmpty()) {
+        this(title, start, end, null, null, null);
+    }
+
+    public Event(String title, LocalDateTime start, LocalDateTime end,
+                 String description, String location) {
+        this(title, start, end, description, location, null);
+    }
+
+    public Event(String title, LocalDateTime start, LocalDateTime end,
+                 String description, String location, String seriesId) {
+        if (title == null || title.isEmpty())
             throw new IllegalArgumentException("Title cannot be empty");
-        }
-        if (start == null || end == null) {
+        if (start == null || end == null)
             throw new IllegalArgumentException("Start and end times are required");
-        }
-        if (!end.isAfter(start)) {
+        if (!end.isAfter(start))
             throw new IllegalArgumentException("End time must be after start time");
-        }
-        this.title = title.trim();
-        this.start = start;
-        this.end = end;
+        this.title       = title.trim();
+        this.start       = start;
+        this.end         = end;
+        this.description = (description == null || description.isBlank()) ? null : description.trim();
+        this.location    = (location == null || location.isBlank()) ? null : location.trim();
+        this.seriesId    = (seriesId == null || seriesId.isBlank()) ? null : seriesId.trim();
     }
 
-    public String getTitle() {
-        return title;
+    public String getTitle()       { return title; }
+    public LocalDateTime getStart(){ return start; }
+    public LocalDateTime getEnd()  { return end; }
+    public String getDescription() { return description; }
+    public String getLocation()    { return location; }
+    public String getSeriesId()    { return seriesId; }
+    public boolean isRecurring()   { return seriesId != null; }
+
+    /** Creates a new seriesId UUID string to stamp on all instances of a new series. */
+    public static String newSeriesId() {
+        return UUID.randomUUID().toString();
     }
 
-    public LocalDateTime getStart() {
-        return start;
-    }
-
-    public LocalDateTime getEnd() {
-        return end;
-    }
-
-    /**
-     * Returns true if this event overlaps with the given event.
-     * Touching boundaries are not considered overlapping.
-     */
     public boolean overlapsWith(Event other) {
         return this.start.isBefore(other.end) && other.start.isBefore(this.end);
     }
 
-    /**
-     * Converts an Event to a single line of text.
-     * Escape pipes in the title (replace | with /) because pipe is the delimiter.
-     */
     public String toStorageLine() {
-        String escapedTitle = title.replace("|", "/");
-        return escapedTitle + "|" + start.format(ISO) + "|" + end.format(ISO);
+        return title.replace("|", "/") + "|" + start.format(ISO) + "|" + end.format(ISO);
     }
 
-    /**
-     * Parses a pipe delimited storage line back into an Event.
-     */
     public static Event fromStorageLine(String line) {
         String[] parts = line.split("\\|");
-        if (parts.length != 3) {
+        if (parts.length != 3)
             throw new IllegalArgumentException("Malformed event line: " + line);
-        }
-        return new Event(
-                parts[0],
+        return new Event(parts[0],
                 LocalDateTime.parse(parts[1], ISO),
-                LocalDateTime.parse(parts[2], ISO)
-        );
+                LocalDateTime.parse(parts[2], ISO));
     }
 
-    /**
-     * produce a human-readable representation of an Event
-     * @return
-     */
     @Override
     public String toString() {
         DateTimeFormatter display = DateTimeFormatter.ofPattern("MMM dd, yyyy h:mm a");
-        return String.format("%s  [%s -> %s]",
-                title, start.format(display), end.format(display));
+        return String.format("%s  [%s -> %s]", title, start.format(display), end.format(display));
     }
 
     @Override
@@ -94,12 +89,6 @@ public class Event {
         return title.equals(event.title) && start.equals(event.start) && end.equals(event.end);
     }
 
-    /**
-     * If two objects are equal according to .equals but produce different hash codes
-     * HashMap would store them in different buckets and never find them later.
-     * The map would break.
-     * @return
-     */
     @Override
     public int hashCode() {
         return Objects.hash(title, start, end);

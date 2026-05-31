@@ -29,18 +29,21 @@ final class CalendarTheme {
     static final Color NOW_LINE = new Color(0xEA4335);  // red current-time marker
     static final Color TODAY_BG = new Color(0xE8F0FE);  // soft blue wash for today
 
-    // A small, friendly palette for event blocks
+    // A small, friendly palette for personal event blocks.
+    // Green (0x0B8043) and purple (0x8E24AA) are intentionally excluded here
+    // because they are reserved for the Sports and Religion overlay swatches —
+    // keeping them out prevents personal events from looking like overlay items.
     private static final Color[] EVENT_PALETTE = {
             new Color(0x1A73E8), // blue
-            new Color(0x0B8043), // green
             new Color(0xD93025), // red
             new Color(0xF09300), // amber
-            new Color(0x8E24AA), // purple
             new Color(0x009688), // teal
             new Color(0xE8710A), // orange
             new Color(0x3949AB), // indigo
             new Color(0xC2185B), // pink
             new Color(0x00838F), // cyan
+            new Color(0x039BE5), // light blue
+            new Color(0xAD1457), // rose
     };
 
     /**

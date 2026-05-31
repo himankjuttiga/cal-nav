@@ -16,7 +16,7 @@ public class Main {
     // installed as a native app. Override by passing a path as the first arg.
     private static final String DEFAULT_DATA_FILE =
             System.getProperty("user.home") + java.io.File.separator
-                    + ".cal-nav" + java.io.File.separator + "events.txt";
+                    + ".cal-nav" + java.io.File.separator + "events.json";
 
     public static void main(String[] args) {
         String dataFile = args.length > 0 ? args[0] : DEFAULT_DATA_FILE;

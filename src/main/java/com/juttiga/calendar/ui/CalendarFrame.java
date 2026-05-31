@@ -154,7 +154,7 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
                 out.add(new CalItem(e, Category.PERSONAL));
             }
         }
-        for (Category c : new Category[]{Category.SPORTS, Category.RELIGION, Category.MIAMI}) {
+        for (Category c : new Category[]{Category.RELIGION, Category.MIAMI}) {
             if (visible.contains(c)) {
                 for (Event e : overlays.eventsFor(c, date)) out.add(new CalItem(e, c));
             }
@@ -190,8 +190,10 @@ public class CalendarFrame extends JFrame implements CalendarActions, CalendarDa
                 : e.getStart().toLocalTime().format(TIME) + " - " + e.getEnd().toLocalTime().format(TIME);
         String msg = e.getTitle() + "\n"
                 + e.getStart().toLocalDate().format(LONG_DATE) + "\n"
-                + when + "\n\n"
-                + "Calendar: " + item.category.label + "  (read-only)";
+                + when
+                + (e.getLocation() != null ? "\nLocation: " + e.getLocation() : "")
+                + (e.getDescription() != null ? "\n\n" + e.getDescription() : "")
+                + "\n\nCalendar: " + item.category.label + "  (read-only)";
         JOptionPane.showMessageDialog(this, msg, item.category.label, JOptionPane.INFORMATION_MESSAGE);
     }
 
