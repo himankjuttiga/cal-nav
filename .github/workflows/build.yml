@@ -1,103 +1,104 @@
-  name: Build and Release
+name: Build and Release
 
-  on:
-    push:
-      branches: [main]
+on:
+  push:
+    branches: [main]
 
-  permissions:
-    contents: write
+permissions:
+  contents: write
 
-  jobs:
-    build-jar:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-java@v4
-          with:
-            distribution: temurin
-            java-version: '17'
-            cache: maven
-        - name: Build runnable jar
-          run: mvn -B clean package -DskipTests
-        - name: Upload jar for installer jobs
-          uses: actions/upload-artifact@v4
-          with:
-            name: jar
-            path: target/cal-nav.jar
-            retention-days: 1
+jobs:
+  build-jar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Build runnable jar
+        run: mvn -B clean package -DskipTests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jar
+          path: target/cal-nav.jar
+          retention-days: 1
 
-    build-installers:
-      needs: build-jar
-      strategy:
-        fail-fast: false
-        matrix:
-          include:
-            - os: macos-latest
-              type: dmg
-              asset: cal-nav.dmg
-            - os: windows-latest
-              type: msi
-              asset: cal-nav-1.0.0.msi
-            - os: ubuntu-latest
-              type: deb
-              asset: cal-nav_1.0.0_amd64.deb
-      runs-on: ${{ matrix.os }}
-      steps:
-        - uses: actions/checkout@v4
-        - uses: actions/setup-java@v4
-          with:
-            distribution: temurin
-            java-version: '17'
-        - name: Download jar
-          uses: actions/download-artifact@v4
-          with:
-            name: jar
-            path: target
-        - name: Build native installer
-          shell: bash
-          run: |
-            jpackage \
-              --type ${{ matrix.type }} \
-              --name cal-nav \
-              --app-version 1.0.0 \
-              --input target \
-              --main-jar cal-nav.jar \
-              --main-class com.juttiga.calendar.Main \
-              --dest dist \
-              --vendor "Himank Juttiga" \
-              --description "Personal calendar with Day, Week, and Month views"
-        - name: Upload installer artifact
-          uses: actions/upload-artifact@v4
-          with:
-            name: installer-${{ matrix.os }}
-            path: dist/${{ matrix.asset }}
-            retention-days: 1
+  build-installers:
+    needs: build-jar
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            type: dmg
+          - os: windows-latest
+            type: msi
+          - os: ubuntu-latest
+            type: deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download jar
+        uses: actions/download-artifact@v4
+        with:
+          name: jar
+          path: target
+      - name: Build native installer
+        shell: bash
+        run: |
+          mkdir -p dist
+          jpackage \
+            --type ${{ matrix.type }} \
+            --name cal-nav \
+            --app-version 1.0.0 \
+            --input target \
+            --main-jar cal-nav.jar \
+            --main-class com.juttiga.calendar.Main \
+            --dest dist \
+            --vendor "Himank Juttiga" \
+            --description "Personal calendar with Day, Week, and Month views"
+          echo "=== dist contents ==="
+          ls -la dist/
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: dist/
+          retention-days: 1
 
-    release:
-      needs: build-installers
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - name: Download all installers
-          uses: actions/download-artifact@v4
-          with:
-            pattern: installer-*
-            merge-multiple: true
-            path: dist
-        - name: Get short commit SHA
-          id: sha
-          run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        - name: Delete previous latest release
-          run: gh release delete latest --cleanup-tag --yes 2>/dev/null || true
-          env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        - name: Create GitHub Release
-          run: |
-            gh release create latest \
-              --title "cal-nav (latest build)" \
-              --notes "Automatic build from commit \`${{ steps.sha.outputs.short }}\`" \
-              --prerelease \
-              --tag latest \
-              dist/*
-          env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    needs: build-installers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: installer-*
+          merge-multiple: true
+          path: dist
+      - name: List dist contents
+        run: ls -la dist/
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Delete previous latest release
+        run: gh release delete latest --cleanup-tag --yes 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        run: |
+          gh release create latest \
+            --title "cal-nav (latest build)" \
+            --notes "Automatic build from commit \`${{ steps.sha.outputs.short }}\`" \
+            --prerelease \
+            --tag latest \
+            dist/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
